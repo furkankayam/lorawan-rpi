@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UDP Packet Forwarder — SX1302 HAL Kurulum</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --surface: #111720;
+    --surface2: #171f2e;
+    --border: #1e2d42;
+    --border2: #243347;
+    --accent: #4f9eff;
+    --accent2: #34d399;
+    --accent3: #f97316;
+    --accent4: #a78bfa;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --text: #e2eaf4;
+    --text-muted: #7a90a8;
+    --text-dim: #3a4f66;
+    --critical: #ff6b6b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 52px 56px 44px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .header::after {
+    content: 'UDP';
+    position: absolute;
+    right: -20px; top: -20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 160px;
+    font-weight: 800;
+    color: rgba(79,158,255,0.04);
+    pointer-events: none;
+    user-select: none;
+    line-height: 1;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+  }
+
+  .badge.blue  { background: rgba(79,158,255,0.1); border: 1px solid rgba(79,158,255,0.25); color: var(--accent); }
+  .badge.green { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); color: var(--accent2); }
+  .badge.orange{ background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.25); color: var(--accent3); }
+
+  .header h1 {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .header h1 .hi { color: var(--accent); }
+
+  .header-sub {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 400;
+    max-width: 580px;
+  }
+
+  /* ── CONTAINER ── */
+  .container { max-width: 900px; margin: 0 auto; padding: 48px 56px; }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 52px; }
+
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .step-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .step-num {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .step-num.blue   { background: rgba(79,158,255,0.12); color: var(--accent);  border: 1px solid rgba(79,158,255,0.3); }
+  .step-num.green  { background: rgba(52,211,153,0.12); color: var(--accent2); border: 1px solid rgba(52,211,153,0.3); }
+  .step-num.orange { background: rgba(249,115,22,0.12); color: var(--accent3); border: 1px solid rgba(249,115,22,0.3); }
+  .step-num.purple { background: rgba(167,139,250,0.12); color: var(--accent4); border: 1px solid rgba(167,139,250,0.3); }
+  .step-num.red    { background: rgba(248,113,113,0.12); color: var(--red);    border: 1px solid rgba(248,113,113,0.3); }
+
+  .step-label-wrap { flex: 1; padding-top: 4px; }
+  .step-label-wrap h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+  .step-label-wrap p  { font-size: 13px; color: var(--text-muted); margin-top: 3px; font-weight: 400; }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+
+  .code-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-lang {
+    display: flex; align-items: center; gap: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-muted);
+  }
+
+  .lang-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .ld-bash { background: var(--accent2); }
+  .ld-ini  { background: var(--yellow); }
+  .ld-ps   { background: var(--accent4); }
+  .ld-sh   { background: var(--accent3); }
+
+  .code-file {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-dim);
+  }
+
+  pre {
+    padding: 16px 18px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  /* syntax colors */
+  .t-cmd    { color: #79c0ff; }
+  .t-flag   { color: var(--accent4); }
+  .t-str    { color: var(--accent2); }
+  .t-cmt    { color: var(--text-dim); font-style: italic; }
+  .t-key    { color: #79c0ff; }
+  .t-val    { color: var(--accent3); }
+  .t-num    { color: var(--yellow); }
+  .t-sect   { color: var(--accent4); }
+  .t-path   { color: var(--accent2); text-decoration: underline; text-decoration-color: rgba(52,211,153,0.3); }
+
+  /* ── TABLE ── */
+  .diff-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .diff-table thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+  }
+
+  .diff-table th {
+    padding: 10px 16px;
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+  }
+
+  .diff-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .diff-table tbody tr:last-child td { border-bottom: none; }
+  .diff-table tbody tr:hover { background: rgba(255,255,255,0.01); }
+
+  .cell-var   { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); }
+  .cell-old   { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); text-decoration: line-through; }
+  .cell-new   { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent2); font-weight: 700; }
+  .cell-desc  { font-size: 12px; color: var(--text-muted); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    display: flex; gap: 12px;
+    padding: 13px 16px;
+    border-radius: 8px;
+    margin: 12px 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+
+  .callout.info    { background: rgba(79,158,255,0.07);  border: 1px solid rgba(79,158,255,0.2);  color: #8ab9f5; }
+  .callout.warning { background: rgba(251,191,36,0.07);  border: 1px solid rgba(251,191,36,0.2);  color: #d4a94a; }
+  .callout.danger  { background: rgba(248,113,113,0.07); border: 1px solid rgba(248,113,113,0.25);color: #e88080; }
+  .callout.success { background: rgba(52,211,153,0.07);  border: 1px solid rgba(52,211,153,0.2);  color: #5ec9a0; }
+
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── INLINE CODE ── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(79,158,255,0.1);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border2), transparent);
+    margin: 44px 0;
+  }
+
+  /* ── SUB-STEPS ── */
+  .sub-steps { display: flex; flex-direction: column; gap: 22px; }
+
+  .sub-step { display: flex; gap: 14px; align-items: flex-start; }
+
+  .sub-dot {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .sub-body { flex: 1; }
+  .sub-body h4 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .sub-body p  { font-size: 13.5px; color: var(--text-muted); margin-bottom: 8px; }
+
+  /* ── CRITICAL BANNER ── */
+  .critical-banner {
+    background: rgba(248,113,113,0.06);
+    border: 1px solid rgba(248,113,113,0.3);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 0 0 20px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .critical-icon { font-size: 20px; flex-shrink: 0; }
+
+  .critical-body h3 {
+    font-size: 14px; font-weight: 700;
+    color: var(--red);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .critical-body p { font-size: 13px; color: #c4757575; color: #d4888b; line-height: 1.6; }
+
+  /* ── SUCCESS LINE ── */
+  .success-check {
+    display: flex; gap: 10px;
+    align-items: flex-start;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+
+  .success-check .sc-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .success-check code { background: rgba(52,211,153,0.1); color: var(--accent2); }
+  .success-check span { color: var(--text-muted); }
+
+  /* responsive */
+  @media (max-width: 640px) {
+    .header { padding: 32px 24px; }
+    .container { padding: 32px 24px; }
+    .header h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="badge blue">SX1302 HAL</div>
+    <div class="badge green">UDP Packet Forwarder</div>
+    <div class="badge orange">TTN · EU868</div>
+  </div>
+  <h1>UDP <span class="hi">Packet Forwarder</span><br>Kurulum Rehberi</h1>
+  <p class="header-sub">Raspberry Pi 4B + WM1302 üzerinde sx1302_hal derleme, GPIO pin düzeltmeleri ve TTN entegrasyonu.</p>
+</div>
+
+<div class="container">
+
+  <!-- SECTION 1 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge"><div class="step-num blue">1</div></div>
+      <div class="step-label-wrap">
+        <h2>Sistem Hazırlığı ve Arayüzler</h2>
+        <p>SPI, I2C ve Serial donanım arayüzlerini etkinleştir</p>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-bar">
+        <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+        <div class="code-file">raspi-config</div>
+      </div>
+      <pre><span class="t-cmd">sudo</span> raspi-config
+<span class="t-cmt"># Interface Options → SPI        → Yes</span>
+<span class="t-cmt"># Interface Options → I2C        → Yes</span>
+<span class="t-cmt"># Interface Options → Serial Port → No (Login Shell), Yes (Hardware)</span>
+<span class="t-cmd">sudo</span> reboot</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-bar">
+        <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+        <div class="code-file">bağımlılıklar</div>
+      </div>
+      <pre><span class="t-cmd">sudo</span> apt-get update <span class="t-flag">&&</span> <span class="t-cmd">sudo</span> apt-get install <span class="t-flag">-y</span> build-essential git</pre>
+    </div>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge"><div class="step-num green">2</div></div>
+      <div class="step-label-wrap">
+        <h2>SX1302 HAL Derlenmesi</h2>
+        <p>Semtech'in resmi kütüphanesi — Pi üzerinde derleme</p>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-bar">
+        <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+        <div class="code-file">github.com/Lora-net/sx1302_hal</div>
+      </div>
+      <pre><span class="t-cmd">git</span> clone https://github.com/Lora-net/sx1302_hal
+<span class="t-cmd">cd</span> <span class="t-path">/home/pi/sx1302_hal</span>
+<span class="t-cmd">make</span> clean <span class="t-flag">&&</span> <span class="t-cmd">make</span> all</pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 3 — KRİTİK -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge"><div class="step-num red">3</div></div>
+      <div class="step-label-wrap">
+        <h2>KRİTİK: reset_lgw.sh Güncellenmesi</h2>
+        <p>Doküman pin numaraları Pi OS sürümüyle uyuşmuyor — GPIO offset değerleri elle düzeltilmeli</p>
+      </div>
+    </div>
+
+    <div class="critical-banner">
+      <div class="critical-icon">⚠️</div>
+      <div class="critical-body">
+        <h3>Neden Gerekli?</h3>
+        <p>Standart dokümanlardaki GPIO pin numaraları eski Pi OS offset değerlerine göre yazılmış. <code>cat /sys/kernel/debug/gpio</code> ile sistemin gerçek offset değerleri tespit edilip aşağıdaki değerlerle güncellendi.</p>
+      </div>
+    </div>
+
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th>Değişken</th>
+          <th>Eski (Default)</th>
+          <th>Yeni (Pi Sistemi)</th>
+          <th>Açıklama</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="cell-var">SX1302_RESET_PIN</span></td>
+          <td><span class="cell-old">23</span></td>
+          <td><span class="cell-new">529</span></td>
+          <td><span class="cell-desc">Modülü resetlemek (GPIO17)</span></td>
+        </tr>
+        <tr>
+          <td><span class="cell-var">SX1302_POWER_EN_PIN</span></td>
+          <td><span class="cell-old">18</span></td>
+          <td><span class="cell-new">530</span></td>
+          <td><span class="cell-desc">Güç vermek (GPIO18)</span></td>
+        </tr>
+        <tr>
+          <td><span class="cell-var">SX1261_RESET_PIN</span></td>
+          <td><span class="cell-old">22</span></td>
+          <td><span class="cell-new">517</span></td>
+          <td><span class="cell-desc">LBT / Spectral Scan (GPIO5)</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-bar">
+        <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+        <div class="code-file">reset_lgw.sh kopyalama ve düzenleme</div>
+      </div>
+      <pre><span class="t-cmd">cd</span> <span class="t-path">/home/pi/sx1302_hal/packet_forwarder</span>
+<span class="t-cmd">cp</span> /home/pi/sx1302_hal/tools/reset_lgw.sh ./
+<span class="t-cmd">nano</span> reset_lgw.sh
+<span class="t-cmt"># SX1302_RESET_PIN=529, SX1302_POWER_EN_PIN=530, SX1261_RESET_PIN=517</span></pre>
+    </div>
+  </div>
+
+  <!-- SECTION 4 — KRİTİK -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge"><div class="step-num red">4</div></div>
+      <div class="step-label-wrap">
+        <h2>KRİTİK: global_conf.json Güncellenmesi</h2>
+        <p>TTN ile el sıkışma için konfigürasyonu yerelden buluta çek</p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-icon">📄</div>
+      <div>
+        <strong>Dosya:</strong> <code>/home/pi/sx1302_hal/packet_forwarder/global_conf.json.sx1250.EU868</code><br>
+        <code>gateway_conf</code> bloğu içindeki aşağıdaki 4 parametre güncellendi.
+      </div>
+    </div>
+
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th>Parametre</th>
+          <th>Eski (Default)</th>
+          <th>Yeni (TTN)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="cell-var">"gateway_ID"</span></td>
+          <td><span class="cell-old">"AA555A..."</span></td>
+          <td><span class="cell-new">"0016C001F1540604"</span></td>
+        </tr>
+        <tr>
+          <td><span class="cell-var">"server_address"</span></td>
+          <td><span class="cell-old">"localhost"</span></td>
+          <td><span class="cell-new">"eu1.cloud.thethings.network"</span></td>
+        </tr>
+        <tr>
+          <td><span class="cell-var">"serv_port_up"</span></td>
+          <td><span class="cell-old">1730</span></td>
+          <td><span class="cell-new">1700</span></td>
+        </tr>
+        <tr>
+          <td><span class="cell-var">"serv_port_down"</span></td>
+          <td><span class="cell-old">1730</span></td>
+          <td><span class="cell-new">1700</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-bar">
+        <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+        <div class="code-file">global_conf.json.sx1250.EU868</div>
+      </div>
+      <pre><span class="t-cmd">nano</span> <span class="t-path">/home/pi/sx1302_hal/packet_forwarder/global_conf.json.sx1250.EU868</span>
+<span class="t-cmt"># gateway_ID, server_address, serv_port_up, serv_port_down güncelle</span></pre>
+    </div>
+  </div>
+
+  <!-- SECTION 5 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge"><div class="step-num orange">5</div></div>
+      <div class="step-label-wrap">
+        <h2>Çalıştırma ve Doğrulama</h2>
+        <p>TTN üzerinde yeşil bağlantı için</p>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-bar">
+        <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+        <div class="code-file">packet_forwarder dizininde çalıştır</div>
+      </div>
+      <pre>./lora_pkt_fwd <span class="t-flag">-c</span> global_conf.json.sx1250.EU868</pre>
+    </div>
+
+    <div class="callout success">
+      <div class="callout-icon">✅</div>
+      <div>TTN konsolunda gateway kartı <strong>yeşil (Connected)</strong> görünüyorsa kurulum başarılı.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 6 — SYSTEMD -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge"><div class="step-num purple">6</div></div>
+      <div class="step-label-wrap">
+        <h2>Systemd Servisi</h2>
+        <p>Reboot sonrası otomatik başlatma</p>
+      </div>
+    </div>
+
+    <div class="sub-steps">
+
+      <div class="sub-step">
+        <div class="sub-dot">1</div>
+        <div class="sub-body">
+          <h4>Servis dosyasını oluştur</h4>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+            </div>
+            <pre><span class="t-cmd">sudo</span> nano /etc/systemd/system/lora-gateway.service</pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="code-lang"><div class="lang-dot ld-ini"></div> ini</div>
+              <div class="code-file">lora-gateway.service</div>
+            </div>
+            <pre><span class="t-sect">[Unit]</span>
+<span class="t-key">Description</span>=<span class="t-val">LoRa Packet Forwarder</span>
+<span class="t-key">After</span>=<span class="t-val">network-online.target</span>
+<span class="t-key">Wants</span>=<span class="t-val">network-online.target</span>
+
+<span class="t-sect">[Service]</span>
+<span class="t-key">Type</span>=<span class="t-val">simple</span>
+<span class="t-key">User</span>=<span class="t-val">root</span>
+<span class="t-key">WorkingDirectory</span>=<span class="t-val">/home/pi/sx1302_hal/packet_forwarder</span>
+<span class="t-key">ExecStartPre</span>=<span class="t-val">/home/pi/sx1302_hal/packet_forwarder/reset_lgw.sh start</span>
+<span class="t-key">ExecStart</span>=<span class="t-val">/home/pi/sx1302_hal/packet_forwarder/lora_pkt_fwd -c global_conf.json.sx1250.EU868</span>
+<span class="t-key">ExecStop</span>=<span class="t-val">/home/pi/sx1302_hal/packet_forwarder/reset_lgw.sh stop</span>
+<span class="t-key">Restart</span>=<span class="t-val">on-failure</span>
+<span class="t-key">RestartSec</span>=<span class="t-num">10</span>
+
+<span class="t-sect">[Install]</span>
+<span class="t-key">WantedBy</span>=<span class="t-val">multi-user.target</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-step">
+        <div class="sub-dot">2</div>
+        <div class="sub-body">
+          <h4>Aktif et ve başlat</h4>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+            </div>
+            <pre><span class="t-cmd">sudo</span> systemctl daemon-reload
+<span class="t-cmd">sudo</span> systemctl enable lora-gateway
+<span class="t-cmd">sudo</span> systemctl start lora-gateway</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-step">
+        <div class="sub-dot">3</div>
+        <div class="sub-body">
+          <h4>Durum ve log takibi</h4>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="code-lang"><div class="lang-dot ld-bash"></div> bash</div>
+            </div>
+            <pre><span class="t-cmd">sudo</span> systemctl status lora-gateway
+<span class="t-cmd">journalctl</span> <span class="t-flag">-u</span> lora-gateway <span class="t-flag">-f</span></pre>
+          </div>
+          <div class="callout info">
+            <div class="callout-icon">ℹ️</div>
+            <div>Reboot sonrası servis otomatik olarak başlar. <code>systemctl enable</code> bunu garanti eder.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 7 — MQTT TEST -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge"><div class="step-num blue">7</div></div>
+      <div class="step-label-wrap">
+        <h2>Bağlantı Testleri</h2>
+        <p>Port erişimi ve MQTT mesaj doğrulama</p>
+      </div>
+    </div>
+
+    <div class="sub-steps">
+
+      <div class="sub-step">
+        <div class="sub-dot">a</div>
+        <div class="sub-body">
+          <h4>Port erişim testi (Windows)</h4>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="code-lang"><div class="lang-dot ld-ps"></div> PowerShell</div>
+            </div>
+            <pre>Test-NetConnection <span class="t-flag">-ComputerName</span> eu1.cloud.thethings.network <span class="t-flag">-Port</span> <span class="t-num">1883</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-step">
+        <div class="sub-dot">b</div>
+        <div class="sub-body">
+          <h4>MQTT subscribe — cihaz uplink dinle</h4>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="code-lang"><div class="lang-dot ld-sh"></div> bash</div>
+              <div class="code-file">TLS · port 8883</div>
+            </div>
+            <pre>mosquitto_sub \
+  <span class="t-flag">-h</span> eu1.cloud.thethings.network \
+  <span class="t-flag">-p</span> <span class="t-num">8883</span> \
+  <span class="t-flag">--capath</span> /etc/ssl/certs \
+  <span class="t-flag">-u</span> <span class="t-str">"furkan-gateway-monitor@ttn"</span> \
+  <span class="t-flag">-P</span> <span class="t-str">"NNSXS.RJ3H3WHD6WN4MWUG4TT7..."</span> \
+  <span class="t-flag">-t</span> <span class="t-str">"v3/furkan-gateway-monitor@ttn/devices/+/up"</span> \
+  <span class="t-flag">-v</span></pre>
+          </div>
+
+          <div class="callout warning">
+            <div class="callout-icon">🔑</div>
+            <div>API key'i (<code>NNSXS....</code>) TTN konsolundan üretirsin — tam key'i yukarıda sakla, tekrar görüntülenemez.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
